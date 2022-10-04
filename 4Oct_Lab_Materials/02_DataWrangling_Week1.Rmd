@@ -1,0 +1,388 @@
+---
+title: "Data Wrangling with dplyr (tidyverse)"
+author: "Amy Henry"
+date created: September 30, 2021
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This tutorial will walk you through how to import and manipulate data frames using functions from the tidyverse packages. 
+
+# Loading Packages
+
+There are two ways to access functions and objects from packages. First, the way we already know, is to load the whole package at once using the library() function
+
+Load packages:
+```{r load packages, echo = FALSE, message=FALSE, warning = FALSE}
+library(tidyverse)
+library(gapminder)
+```
+
+Another way, if you only have one function/object you want from a particular package, is to use the :: operator. The package still needs to be installed, but this way you minimize the risk of conflicting packages and run a little more efficiently. 
+
+This code will load a dataset from the titanic package for us, without loading the whole titanic package. 
+```{r package part}
+# install.packages("titanic")
+titanic <- titanic::titanic_train
+original_titanic <- titanic::titanic_train
+```
+
+# Importing Data
+
+## From a .csv file, from Excel or other spreadsheet software
+My favorite way to import data is to convert my spreadsheets to CSV (in excel or Google Sheets) and import the data using the read_csv() function from the *readr* package. The benefit of this method is that its very reproducible - data in CSV format is very stable and portable across different platforms, and it will always import the same way for anyone who uses your code.  
+
+Remember, whenever you do something in R, you need to save it to an object name using the "<-" arrow. If you don't do that, it will "print" the result below and just show you the answer, but not save it. When you save it, it also will not print it. 
+
+The readr package also handles other file types. When it imports your data, it will fill in spaces in column names with underscores and will make a best guess as to the data type (i.e., numeric, character, factor, etc.)
+```{r importing}
+#install.packages("readr")
+library(readr)
+CDM2 <- read_csv("CDM_data.csv")
+CDM2
+```
+
+These two functions also import the data into two slightly different formats. 
+read_csv() creates a tibble, which is a special data frame that gives more useful error messages.  
+
+## From RData files
+If someone has given you a .Rdata file, this is an R file type that contains multiple data objects so that you can easily import them and use them without having to rename all the objects. Check the 
+"Environment" pane in the upper right - you'll see a whole bunch of new objects. Try viewing a few of them. 
+
+```{r}
+load("S4E2e.RData")
+head(ps)
+```
+
+You'll notice that many of them don't look the same as when you viewed your imported .csv above. When you use the read_csv() function, it will automatically parse it as a data frame, in which the columns are all variables and the rows are observations. 
+
+The objects in this .Rdata file are stored as matrices - it stores the data in a grid, but doesn't assume that the columns are variables. This is easy to convert to a tibble or a data frame: 
+
+```{r}
+ps_dataframe <- as.data.frame(ps)
+ps_dataframe
+
+#install.packages(tidyverse)
+library(tidyverse)
+sward2_tibble <- as_tibble(sward2)
+sward2_tibble
+```
+
+## From published datasets stored as R packages
+
+Finally, if you're importing data from a dataset that has been published for use in R, you can import it by loading the packages that contains those datasets.
+
+Here is the information page about what datasets are contained in the fivethirtyeight package. 
+https://www.rdocumentation.org/packages/fivethirtyeight/versions/0.6.1
+This page lists the names of the data sets, so that you can do analyses on them as well. 
+```{r}
+#install.packages("fivethirtyeight")
+library(fivethirtyeight)
+
+candy_rankings # data about popular Halloween candies, their characteristics and how popular they are, as assessed in survey data. 
+#View(candy_rankings)
+
+bob_ross # This dataset shows what features (trees, people) Bob Ross painted in each episode of "The Joy of Painting". 
+# View(bob_ross)
+
+```
+
+# Viewing data
+
+While we all love View() as a function for looking at our data in nice spreadsheet form, it does mess up RMarkdown (anything that makes a pop-up window will). Other ways to view your data in RMarkdown include: 
+
+This view that shows the first 10 rows of your columns over multiple pages
+```{r}
+CDM2
+```
+
+Another way (that makes very nice tables with less spaces) is kable, from the knitr package. This format is easier to copy and paste and looks nicer in your knitted output file. 
+
+Notice how we used the kable function from the knitr package using the double colon :: operator we learned above! 
+```{r}
+#install.packages("knitr")
+# library(knitr)
+knitr::kable(head(CDM2))
+```
+
+
+## Data Wrangling
+
+The data we'll use today is a dataset about the passengers on the Titanic. 
+
+Load data:
+```{r titanic data, echo = FALSE, message=FALSE, warning = FALSE}
+titanic <- titanic::titanic_train
+original_titanic <- titanic::titanic_train
+```
+
+Let's look at the data. What variables do we have to work with? 
+```{r}
+# View(titanic)
+glimpse(titanic)
+```
+
+We are going to focus on five major functions for data manipulation in today's exercise: 
+1. filter()
+2. arrange()
+3. select() and its buddy, rename() 
+4. mutate()
+5. summarize()
+
+and finally, the one that makes them all the MOST useful: 
+6. group_by()
+
+## How do these functions work? 
+1. The first argument is a data frame.
+2. The subsequent arguments describe what to do with the data frame, using the variable names (without quotes).
+3. The result is a new data frame.
+
+newdataframe <- function(data, argument1 = Var1, argument2 = Var2, etc.)
+
+
+## Pipes: the easy way to string together multiple functions
+
+%>% is a pipe. 
+
+You can think of it as substituting for the words "and then". It passes the ouput of everything before it into the function after the pipe. This will make more sense in practice! 
+Practice with pipes
+
+```{r}
+round(mean(c(2,2,4)))
+# becomes
+c(2,2,4) %>% 
+  mean() %>% 
+  round()
+```
+
+## 1. filter(): picking observations by their values
+
+Do you want to only look at SOME of the values of a dataset, instead of all of them? Pick out only ones that meet certain conditions? 
+
+Then *filter()* is the function for you. 
+
+### Conditional Statements & Logical Operators
+because = is used so often in other situations in R, for conditional statements like "Does this exactly equal that", we use a "==" to test. 
+
+Key to Logical Operators:
+>, < : greater than and less than
+=>, =<,  : greater than or equal to, less than or equal to
+!= : NOT equal to 
+== : exactly equal to
+%in$ : value appears within the array
+& : AND
+| : OR
+
+Say we want to only look at data about the survivors of the Titanic. All we need to do is put in our data, our argument, which here is the variable on which we want to sort, plus the condition. 
+```{r}
+filter(titanic, Survived == TRUE)
+```
+Another way to do this that does the same thing is with pipes: 
+```{r}
+titanic %>% 
+  filter(Survived == TRUE)
+```
+```{r}
+
+```
+
+
+## arrange() reorders the observations by values or categories. 
+
+What if we want to sort the passengers from youngest to oldest? 
+```{r}
+titanic %>% 
+  arrange(Age)
+```
+How about the other way around? 
+```{r}
+titanic %>% 
+  arrange(-Age)
+```
+
+Can you sort the dataframe by Fare, from most to least expensive? 
+```{r}
+
+```
+
+## select() makes a new dataframe with only certain columns
+
+
+This is easy too! There are too many columns in this dataframe and its confusing. Let's pick only a few that we care about. 
+```{r}
+titanic %>% 
+  select(Fare, Age)
+```
+
+The - sign reverses it, signaling to keep all the columns EXCEPT Fare and Age. 
+
+```{r include=FALSE}
+titanic %>% 
+  select(-Fare, -Age)
+```
+
+Select can also choose columns that meet certain conditions - this isn't a good dataset to demonstrate it, but just know that it can pick columns based on: 
+starts_with() 
+ends_with() 
+contains() 
+matches() etc. 
+```{r eval=FALSE}
+
+```
+
+###  Combining functions using pipes
+
+Here's where the beauty of pipes comes in. Want to make a data frame that has only Fare and Age of all Survivors? Easy. Just add another pipe. 
+
+```{r}
+titanic %>% 
+  filter(Survived == TRUE) %>% 
+  select(Fare, Age)
+```
+
+
+Can we make a data frame that has Fare and Age of passengers in second and third class? 
+
+To do this, you will need to use more than one conditional statement, which are pretty easy to string together above. 
+```{r eval = FALSE}
+titanic %>%
+  filter(Pclass == 2 | Pclass == 3) %>% 
+  select(Pclass, Fare, Age)
+
+# OR
+titanic %>%
+  filter(Pclass != "1") %>% 
+  select(Pclass, Fare, Age)
+```
+
+
+## mutate() makes a new variable/column. 
+
+Perhaps we want to know how old the passengers would be if they were alive today. We would make a new column that has the age when they were on the boat plus the number of years that have elapsed since the Titanic sank. 
+
+The format for mutate is: 
+mutate(data, newcolumn_name = computation)
+```{r}
+titanic <- mutate(titanic, age_new = Age + 109)
+# remember to assign!
+
+```
+
+Now, once we've assigned it to the titanic object, that object is changed and has that new column forever! Our old dataframe is gone. Be careful when assigning your new data frame to the old name!
+
+```{r}
+titanic <- original_titanic %>% 
+  mutate(age_new = Age + 108) %>% 
+  mutate(Survived = as.logical(Survived)) %>% 
+  mutate(Pclass = as.factor(Pclass)) %>% 
+  mutate(Embarked = as.factor(Embarked))
+```
+
+### Renaming variables
+
+A super easy mutate is to just rename variables. Sometimes they're ugly and annoying, so we want our column names prettier. 
+```{r eval = FALSE}
+titanic %>% 
+  rename(passenger_id = PassengerId) 
+```
+
+Can you write a line that renames passenger_id and also selects only Survived, Fare, Age, and Pclass?
+```{r eval=FALSE}
+titanic %>% 
+  rename(passenger_id = PassengerId) %>% 
+  select(Survived, Fare, Age, Pclass)
+```
+
+
+### mutating using case_when()
+```{r eval = FALSE}
+titanic %>% 
+  mutate(Embarked = case_when(
+    Embarked == "C" ~ "Cherbourg",
+    Embarked == "Q" ~ "Queenstown", 
+    Embarked == "S" ~ "Southampton"
+  ))
+```
+
+## count() does a count on the number of observations of each value in the designated column. 
+
+What is generated when you run this line of code? 
+```{r}
+count(titanic, Survived)
+```
+
+We can make it even more useful by combining it with mutate: 
+```{r}
+#makes a percentage! neat.
+titanic %>% 
+  count(Survived) %>% 
+  mutate(prop = n/sum(n))
+```
+
+It can count based on multiple conditions too! 
+```{r}
+# multiple classes
+titanic %>% 
+  count(Survived, Pclass)
+```
+
+## summarize() performs functions that collapse many rows down to only a few rows, generating a new dataframe with "summaries". 
+
+```{r}
+titanic %>% 
+  summarize(mean(Fare))
+
+titanic %>% 
+  summarize(mean(Age, na.rm = TRUE))
+```
+
+It can do as many summaries as you want! And name the columns that it goes into.
+```{r eval = FALSE}
+titanic %>% 
+  summarize(mean_fare = mean(Fare), 
+            sd_fare = sd(Fare), 
+            var_fare = var(Fare), 
+            minfare = min(Fare), 
+            maxfare = max(Fare), 
+            count = n())
+
+```
+
+## group_by() applies summarize functions (and others!) to subsets of the data frame separately, which is hecking useful.
+
+```{r eval = FALSE}
+titanic %>% 
+  group_by(Survived) %>% 
+  summarize(mean_fare = mean(Fare), 
+            sd_fare = sd(Fare), 
+            var_fare = var(Fare), 
+            minfare = min(Fare), 
+            maxfare = max(Fare), 
+            count = n())
+```
+
+
+## Pivot - pivot_wider() & pivot_longer() change rows to columns and vice versa. 
+
+pivoting to move from wide to long data
+
+```{r}
+gapminder_wide <- 
+  gapminder %>% 
+  pivot_wider(id_cols = country,
+              names_from = year,
+              values_from = lifeExp)
+
+```
+
+
+```{r}
+gapminder_long <- 
+  gapminder_wide %>% 
+  pivot_longer(names_to = "Year",
+               values_to = "Life_Expectancy",
+               cols = 2:13)
+```
+

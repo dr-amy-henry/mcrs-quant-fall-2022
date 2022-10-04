@@ -1,0 +1,448 @@
+---
+title: "ggplot Tutorial"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r packages}
+#install.packages("tidyverse")
+#install.packages("fivethirtyeight")
+library(tidyverse)
+library(fivethirtyeight)
+```
+
+Load data
+```{r data}
+
+```
+
+## GGPLOTS: The Basic format
+
+There are three really basic components you need for any ggplot - the dataset, the variables you want on each axis, and a geom to tell it what kind of plot to make. Examples of geoms: geom_bar(), geom_histogram(), geom_boxplot(), geom_line() - all pretty intuitive about what they'll make! These pieces are layered into the plot with + signs. 
+
+What it looks like when you put those things together
+ggplot(<dataset>) + 
+  aes(x = <variable you want on the x-axis from dataset>, y = <ditto for y>) + 
+  geom_<typeofplot>(<modifiers of that plot>)
+```{r base}
+ggplot(candy_rankings) # this line makes the space to put the plot, the background
+```
+
+```{r axes}
+ggplot(candy_rankings) + 
+  aes(x = chocolate) # this says what to put on the axes
+```
+
+```{r candy plot 1}
+ggplot(candy_rankings) +  
+  aes(x = chocolate) + 
+  geom_bar() # this says what kind of plot to make, in this case, a barplot that automatically did counts of the observations of which candies were chocolate or not chocolate. 
+```
+
+ggplots can be defined as an object and recalled later too. This is useful when you are adding more geoms and trying things out, or when you're compiling the plots into a multiple plot figure or exporting them. 
+
+```{r saved plot}
+chocolate_bar <- ggplot(candy_rankings) + 
+  aes(x = chocolate) + 
+  geom_bar()
+chocolate_bar
+```
+
+Challenge: 
+Plot a different variable, without copying and pasting the script you wrote before. 
+
+Viewing the dataset
+```{r}
+candy_rankings
+glimpse(candy_rankings)
+View(candy_rankings)
+```
+
+```{r challenge}
+ggplot(candy_rankings) + 
+  aes(x = fruity) +
+  geom_bar()
+```
+
+
+#Okay, we've got bar plots nailed. What other kinds of plots might be interesting? 
+
+For example, here we've plotted the win percentage (how often people ranked it in their favorites) against sugar percent, to ask the question, do sweeter candies win more often?
+
+We're using the geom_point() function to plot this as a scatter plot. 
+
+```{r scatter}
+ggplot(candy_rankings) + 
+  aes(x = pricepercent, y = winpercent) + 
+  geom_point() +
+  geom_smooth(method = lm)
+```
+
+To add a best-fit regression line, we can use the geom_smooth() argument 
+
+```{r scatter plus regression}
+sweetness <- ggplot(candy_rankings) + 
+  aes(x = sugarpercent, y = winpercent) + 
+  geom_point()
+sweetness
+#notice how you can add the layer to the already created object
+sweetness + geom_smooth(method = lm)
+  
+```
+
+
+# BIG IDEA: Types of geoms = types of plots = types of questions
+
+Essential Questions When Deciding What Kind of Plot to use: 
+1. How many variables do you have?
+2. Are they continuous or discrete? 
+3. What is the predictor (x) and what is the response (y)?
+4. Does your data need to be transformed, summarized, or counted to be plotted how you want?
+
+
+## Reference for which geoms/stats to use for which kinds of plots: 
+Check out your ggplot2 Cheatsheet! This has a nice visual reference to what geom to use to make what kind of plot. 
+
+More detail here, to not worry about yet. 
+https://ggplot2.tidyverse.org/reference/
+
+
+######################################################
+
+# Aesthetics
+Aesthetics are the visuals of the plot - what is actually being plotted. 
+Definition: “concerned with beauty or the appreciation of beauty.”
+
+## Mapping Aesthetics
+* mapping = assigning a variable to a graphical parameter
+** Examples of graphical parameters: x, y, color, fill, size
+* Levels = properties of a particular aesthetic
+** Examples of levels: blue, size 5, etc. 
+* Scaling = how ggplot automatically selects unique levels for mapped variables; can also be done manually
+
+Mappable aesthetics for adding more than two variables/groups; customizable using scales. 
+* Color & Fill
+* Linetype
+** 0 - 6 refer to different types of lines
+* Size (line width in mm)
+* Alpha
+** Color saturation; from 0 - 1
+* Shape
+** 0 - 25 refer to different shapes. 1 = open circle, 19 = solid circle, 21 = fillable circle
+* Facets
+** Makes a separate mini-plot for each categorical group. Added as an additional line to the ggplot. 
+
+
+### Mapping Color & Fill
+
+If you want the color to reflect another variable, for example, if there is fruit in the candy too, then you can assign that under aes(). 
+```{r map fill boxplot}
+ggplot(candy_rankings) +
+  aes(x = chocolate, y = sugarpercent, color = fruity) + 
+  geom_boxplot()
+```
+
+
+
+
+## Mapping Shapes
+Working on a scatterplot and want the points to be different shapes? Easy too! 
+
+Similarly, you can change shape by some other variable. 
+```{r}
+ggplot(candy_rankings) +
+  aes(x = pricepercent,
+      y = winpercent, 
+      color = chocolate) +
+  geom_point()+
+  geom_smooth(method = lm)
+```
+
+Can you make a plot in which SHAPE is the mapped aesthetic for nougat? 
+```{r map shape nougat}
+
+```
+### Mapping Facets: Multiple plots in multiple panes - 
+what happens when you move the . and ~ next to chocolate, like in the commented out line? 
+```{r}
+ggplot(candy_rankings) +
+  aes(x = sugarpercent,
+      y = winpercent, 
+      color = chocolate) +
+  geom_point() +
+  # facet_grid(chocolate ~ fruity)
+  facet_grid(vars(chocolate))
+```
+
+Can you make a faceted plot in which caramel is in one panel, and no caramel is in the other?
+```{r map facet }
+
+```
+
+## Setting aesthetics
+Mapping vs. Setting
+Mapping a variable uses data; setting is just manually changing some visual aspect of the plot, like making all the points a particular color. 
+Settable aesthetics
+* labs  (i.e., labels)
+* theme
+** Customizes the axes, panel, and facet properties 
+** Some default ones look nice; also highly customizable
+* Legends
+* Colors, shapes, anything from the mappable aesthetics. 
+
+
+### Setting colors
+Reference: 
+bit.ly/colors-r
+
+You can change the color in the geom argument. Test out how it works on different geoms!
+```{r}
+ggplot(candy_rankings) +  
+  aes(x = chocolate) + 
+  geom_bar(color = 'darkblue', fill = 'coral') 
+```
+
+### Setting shapes
+```{r}
+ggplot(candy_rankings) +
+  aes(x = pricepercent,
+      y = winpercent) +
+  geom_point(shape = 2)
+```
+
+
+## Challenge question: what proportion of candies have BOTH chocolate and caramel? 
+
+
+
+
+## Other ggplot arguments
+
+### Position 
+
+- For discrete plots, like boxplots or barplots:
+-- identity = exactly where it goes (can result in overlap)
+-- dodge = side by side
+-- fill = stacked, normalized height
+-- stack = stacked, non-proportional
+
+- For scatter plots:
+-- Jitter = adds random noise to reduce overlap
+
+```{r}
+ggplot(candy_rankings) +  
+  aes(x = chocolate, fill = caramel) + 
+  # geom_bar(position = "identity") 
+  
+  geom_bar(position = "dodge") 
+  #geom_bar(position = "stack")  
+  # geom_bar(position = "fill") 
+```
+
+How do these graphs differ in what they tell you? 
+
+### Labels
+
+Pretty self-explanatory here. labs() are added separately from the other plot parameters.
+```{r}
+ggplot(candy_rankings) +
+  aes(x = sugarpercent, 
+      y = winpercent) +
+  geom_point() +
+  labs(x = "Sugar Percentage",
+       y = "Win Percentage",
+       title = "Relationship between the dependent and independent variable",
+       subtitle = "for Halloween candies",
+       caption = "Based on an online Survey by FiveThirtyEight")
+
+```
+
+
+### X and Y axis limits
+
+```{r}
+ggplot(candy_rankings) +
+  aes(x = sugarpercent, 
+      y = winpercent) +
+  geom_point() +
+  xlim(0, 1) +
+  ylim(0, 100)
+```
+
+
+# When do you use which kind of plot? 
+
+## Descriptive Questions
+
+### Example 1: What kind of variation exists within my variables?
+* geom_histogram()
+1. How many variables do you have? ONE
+2. Are they continuous or discrete? continuous
+3. What is the predictor (x) and what is the response (y)? 
+* X = values
+* Y = occurrence of values in bins
+4. Does your data need to be transformed, summarized, or counted to be plotted how you want?
+* Yes, it uses count data in bins, but geom_histogram does it for you. 
+
+```{r}
+ggplot(candy_rankings) + 
+  aes(x = winpercent) +
+  geom_histogram()
+```
+
+Similar geoms:
+geom_dotplot()
+geom_density() [be careful with this one!]
+geom_area()
+geom_freqpoly()
+geom_boxplot()
+
+
+### Example 2: How many observations are there in each group?
+* geom_bar()
+1. How many variables do you have? ONE (the discrete variable)
+2. Are they continuous or discrete? discrete
+3. What is the predictor and what is the response?
+* X = group
+* Y = count of observations in each group
+4. Does your data need to be transformed, summarized, or counted to be plotted how you want?
+* Yes, barplots use count data; but geom_bar() does it for you. 
+
+```{r}
+ggplot(candy_rankings) +
+  aes(x = chocolate) + 
+  geom_bar()
+```
+
+## Questions of Difference
+
+### Example 1: Are there differences in values between groups?
+* geom_boxplot()
+1. How many variables do you have? TWO
+2. Are they continuous or discrete? BOTH
+3. What is the predictor (x) and what is the response?
+* X = discrete variable
+* Y = continuous variable
+4. Does your data need to be transformed, summarized, or counted to be plotted how you want?
+* Yes. Boxplots use median and quartile ranges; but geom_boxplot() does it for you.
+
+```{r}
+ggplot(candy_rankings) +
+  aes(x = chocolate, 
+      y = winpercent) +
+  geom_boxplot()
+```
+
+Similar geoms:
+geom_dotplot()
+geom_violin()
+geom_jitter()
+
+
+### Example 2: Differences between groups, with calculated values
+* geom_col()
+1. How many variables do you have? TWO
+2. Are they continuous or discrete? BOTH
+3. What is the predictor (x) and what is the response?
+* X = discrete variable
+* Y = continuous variable
+4. Does your data need to be transformed, summarized, or counted to be plotted how you want?
+* YES. geom_col() plots the values directly from the data; therefore,if you want it to plot mean values, you need to compute them first.
+
+ALSO NOTE: these geoms need additional geoms added on top in order to visualize error. 
+```{r}
+
+candy_summary <- candy_rankings %>% group_by(chocolate, fruity) %>% summarize(meansugar = mean(sugarpercent))
+
+ggplot(candy_summary) + 
+  aes(x = chocolate, fill = fruity, y = meansugar) + 
+  geom_col(position = "dodge")
+```
+
+Similar geoms:
+geom_point()
+
+## Questions about covariation, relationships, and correlation between variables
+
+### Example 1: Are there relationships between two variables?
+* geom_point()  # aka, a scatterplot
+1. How many variables do you have? TWO
+2. Are they continuous or discrete? CONTINUOUS
+3. What is the predictor (x) and what is the response (y)? Depends on your hypothesis
+4. Does your data need to be transformed, summarized, or counted to be plotted how you want? NO
+
+```{r}
+ggplot(candy_rankings) +
+  aes(x = pricepercent, 
+      y = winpercent) +
+  geom_point()
+```
+
+geom_smooth() # aka, a regression line or a spline
+Same as geom_point for all the questions, but instead it plots a best-fit line. Beware if your data is not linear!
+
+```{r}
+ggplot(candy_rankings) +
+  aes(x = pricepercent, 
+      y = winpercent) +
+  geom_point() +
+  geom_smooth()
+```
+
+With a line fitted using the lm() function instead of a smoothed line. Test out what happens when you set "se = TRUE". 
+```{r}
+ggplot(candy_rankings) +
+  aes(x = pricepercent, 
+      y = winpercent) +
+  geom_point() +
+  geom_smooth(method = "lm", 
+              se = FALSE)
+```
+
+## Questions about Association 
+### Example 1: Is there an association between groups within discrete variables?
+geom_count() & geom_jitter()
+How many variables do you have? TWO
+Are they continuous or discrete? DISCRETE
+What is the predictor (x) and what is the response (y)? Depends on your hypothesis
+Does your data need to be transformed, summarized, or counted to be plotted how you want? Counted; geom_count() does it for you. 
+
+```{r}
+ggplot(candy_rankings) + 
+  aes(x = chocolate, y = nougat) + 
+  geom_count()
+```
+Similar: 
+geom_jitter()
+
+
+### Tests: 
+
+1.  Are fruity candies cheaper? 
+
+2. Are sweeter candies more expensive? Do the candies with higher sugarpercent have higher winpercent? Plot this relationship.
+
+3. What can you do with your own data?
+
+
+
+
+## Practice plotting some more with: 
+```{r}
+avengers # Joining The Avengers Is As Deadly As Jumping Off A Four-Story Building
+
+drinks # how much of different kinds of booze do people in different countries drink?
+
+fandango # do different movie rating systems agree with each other?
+
+flying # How do people behave (or feel about how other people behave) on airplanes?
+
+bad_drivers # which state has the worst drivers?
+
+bob_ross # A Statistical Analysis of the Work of Bob Ross
+```
+
+
