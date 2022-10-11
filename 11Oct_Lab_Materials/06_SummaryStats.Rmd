@@ -1,0 +1,436 @@
+---
+title: "Summary Statistics with Owl Limpets"
+author: "Amy Henry"
+date: "10/07/2021"
+output:
+  html_document: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Today we will practice our skills so far with ggplot and dplyr functions to a new dataset - one collected on Owl Limpets nearby. 
+
+#### Load Packages:
+```{r packages, include = FALSE}
+library(tidyverse)
+library(lubridate) # This package allows you to use date/time data that I've formatted nicely for you in the "AllSites_tidy.csv" file. 
+# library(MASS)
+```
+
+#### Import Data: 
+```{r import cc data, include = FALSE}
+CCdata <- read_csv(file = "Owls_CC_2021.csv")
+```
+
+### Tidy our data
+
+This dataset is from Crystal Cove State Park, and contains counts for limpets of different size classes surveyed on different dates. The formatting is not tidy. Let's get it there. 
+
+Tidy data has all the observations on rows and variables on columns, so let's start there. What format is the data in right now?  
+
+#### Pivot
+We can use the pivot_longer() function to transform our data from WIDE to LONG format. 
+```{r pivot cc}
+CCdata_long <- CCdata %>%
+  pivot_longer(cols = 2:11, # which columns are being transformed?
+               names_to = "Key", # where should R put the old column names? Give it a new column to drop them into. 
+               values_to = "count") # where should R put the old data values? Give it a new column name. 
+
+CCdata_long
+```
+
+#### Separate more than one piece of information into multiple columns
+
+The next thing that's wrong is that there is still too much data in each cell in the Key column. Let's separate it using the separate() function. 
+```{r separate column}
+CCdata_long_separated <- CCdata_long %>%
+  separate(Key,  # which column are you splitting? 
+           into = c("Impact", "Year", "Season"), # What are the names of your new columns? 
+           sep = "_") # What is your delimiter, so R knows where to split it?
+
+CCdata_long_separated
+```
+
+#### Cleaning up dates with mutate, paste, and lubridate
+
+I think we're going to want to put these in order to make a time series - therefore, let's also make a Survey_Date column with a fake survey day in April and October so that all of these can stay in order and plot nicely later. 
+
+We can make a new column with text and data from old columns using the paste() function. The "sep" argument is the same thing as in the separate() function above - it's the character you want between your pasted things. It's a space by default, so we tell it here to put nothing in between. 
+
+Since that new column is in the character format, we need to tell it to interpret it as a date. 
+
+We format this date column by telling it what order to expect the values - here the function is mdy(), for month-day-year. This function comes from the **lubridate** package, which I've given you a cheatsheet for. 
+```{r mutate paste date}
+CCdata_long_separated_plusdate <- CCdata_long_separated %>%
+  mutate(Survey_Date = case_when(
+    Season == "Spring" ~ paste("04-01-", Year, sep = ""),
+    Season == "Fall" ~ paste("10-01-", Year, sep = "")
+  )) %>%
+  mutate(Survey_Date = mdy(Survey_Date))
+
+CCdata_long_separated_plusdate
+```
+
+#### Uncount makes multiple copies of rows from single rows. 
+One more thing to consider here: what is the unit of observation in this dataset? What does a single row represent? 
+
+Here, it represents a size class - the data value is the count of the number of limpets that were measured in that size class. But what we want is one row per limpet! We would like to be able to take averages and such on this data, right? We can't compare in this format. 
+
+What's the opposite of count? **uncount!** The uncount() function takes each row and replicates it in your dataset the number of times specified in the count column you identify for it. 
+```{r uncount}
+CCdata_long_separated_plusdate_uncounted <- CCdata_long_separated_plusdate %>%
+  uncount(weights = count)
+```
+
+We've done a lot of transformations, and it's always good to check our work. One of my favorite quick and dirty ways to see if something has done what I want it to is to count how many rows are now in the data frame. 
+```{r cc tidy check}
+# how do we know that it has multiplied the columns like we wanted? 
+nrow(CCdata) # original data, dates by columns
+nrow(CCdata_long) # one row per size class
+nrow(CCdata_long_separated_plusdate_uncounted) # number of rows = number of limpets
+
+# how many limpets were counted in the original dataset?
+sum(CCdata_long$count)
+```
+
+Now that we're done with our data cleaning and reformatting, we can save our final object as an easier to type object name. 
+```{r tidy cc object}
+CCdata_tidy <- CCdata_long_separated_plusdate_uncounted
+```
+
+
+## Exploratory Data Analysis
+
+What do we do first? Visualize!
+
+The two main things we're interested in asking questions about here are abundance and size distributions, so let's check that out. 
+
+### Visualizing Abundance/counts
+
+```{r cc bar plot}
+CCdata_tidy %>% ggplot() +
+  aes(x = Survey_Date, fill = Impact) + 
+  geom_bar(position = "dodge")
+```
+
+We want to CALCULATE things though! There is a whole other world of ggplot geoms called stat_, which can calculate certain functions for us. 
+
+For example, the stat_count() function does exactly the same thing as the geom_bar() function - it counts observations. 
+```{r cc statcount plot}
+CCdata_tidy %>% ggplot() +
+  aes(x = Survey_Date, fill = Impact) + 
+  stat_count(position = "dodge")
+```
+Let's use a stat with geom_line() to make this a nice line plot instead of a bar graph. 
+```{r cc stat line plot}
+CCdata_tidy %>% ggplot() +
+  aes(x = Survey_Date, color = Impact) + 
+  geom_line(stat = "count")
+```
+
+Whoa! Is that population really crashing to zero? no, it's just a misleading y-axis. 
+```{r cc stat line plot new axis}
+CCdata_tidy %>% ggplot() +
+  aes(x = Survey_Date, color = Impact) + 
+  geom_line(stat = "count") + 
+  
+  ylim(0,450)
+```
+
+
+
+## Visualizing Size Data
+
+Let's look at size differences. Our quickest/dirtiest plot for looking at summarized data is our boxplot. What's actually in a boxplot though? 
+```{r cc boxplot size}
+CCdata_tidy %>% ggplot()+
+  aes(x = Year, fill = Impact, alpha = Season, y = Size) + 
+  geom_boxplot()
+```
+
+### Components of a boxplot
+The middle line is the **median**.
+The box is the **interquartile range, or IQR** - the bounds of the second and third quartiles. 
+The upper whisker extends from the hinge to the **largest value no further than 1.5 * IQR** from the hinge (where IQR is the inter-quartile range, or distance between the first and third quartiles). 
+The lower whisker extends from the hinge to the **smallest value at most 1.5 * IQR** of the hinge. Data beyond the end of the whiskers are called "outlying" points and are plotted individually.
+
+These are NOT mean and standard deviation! 
+
+## Summary Statistics for Continuous Variables
+
+mean() : Mean
+min() : minimum value
+max() : maximum value
+range() : min and max values
+var() : Variance
+sd() : Standard deviation
+sd()/mean() : Coefficient of Variation
+median() : Median
+IQR() : Interquartile Range
+quantile() : quantiles
+summary() : min, 1st quartile, median, mean, 3rd quartile, max
+
+Let's do a summary table: 
+```{r size summary table}
+Size_summary <- CCdata_tidy %>% 
+  group_by(Impact, Year, Season, Survey_Date) %>%
+  summarize(mean_size = mean(Size, na.rm = TRUE), # mean 
+            sd_size = sd(Size, na.rm = TRUE),  # standard deviation
+            n = n(), # count
+            se_size = sd_size/sqrt(n)) %>% # standard error
+  mutate_at(vars(mean_size, sd_size, se_size), # bonus line to reduce digits
+            .funs = round, 2) 
+
+Size_summary %>% 
+  select(-Survey_Date) %>%
+  knitr::kable()
+```
+
+#### Visualizing size data with mean and standard deviation
+
+From that summary table, we can make a graph with nice error bars! 
+```{r size bar graph with errorbars}
+Size_summary %>% ggplot() + 
+  aes(x = as.factor(Survey_Date), y = mean_size, fill = Impact) + 
+  #geom_point() +
+  geom_col(position = position_dodge()) +
+  geom_errorbar(aes(ymin = mean_size - sd_size, 
+                    ymax = mean_size + sd_size), 
+                position = position_dodge(0.9), 
+                width = 0.2)
+```
+
+Or, grouped a different way, by swapping the mapping: 
+```{r}
+Size_summary %>% ggplot() + 
+  aes(x = Impact , y = mean_size, fill = as.factor(Survey_Date)) + 
+  #geom_point() +
+  geom_col(position = position_dodge()) +
+  geom_errorbar(aes(ymin = mean_size - sd_size, 
+                    ymax = mean_size + sd_size), 
+                position = position_dodge(0.9), 
+                width = 0.2)
+```
+
+
+### Beyond the summary stats: frequency distributions
+
+Boiling it down to the mean and sd really loses a lot of information though. It's always good to look at the histogram/distribution to get a better sense of what's going on. 
+
+Let's look back at just that one histogram.
+```{r}
+CC_sp19 <- CCdata_tidy %>%
+  filter(Season == "Spring" & Year == 2019 & Impact == "High")
+
+CC_sp19 %>%
+  ggplot() +
+  aes(x = Size)+ 
+  geom_histogram(aes(y = ..density..)) # +
+  # coord_flip()
+```
+What observations can we make about the distribution of this data? 
+Is it symmetrical or skewed? 
+Are there many outliers? 
+Is there missing data? 
+Is it unimodal, i.e., is there only one peak where there are the most observations, or are there multiple peaks (bimodal, etc.)?
+
+What are our expectations for what size demographics should look like for populations of long-lived vs. short-lived animals, r vs. K-selected, growing vs. shrinking populations? 
+
+What factors apart from the population itself may have influenced this pattern? 
+
+Let's look at the histograms for all the dates and sites: 
+```{r many histograms}
+CCdata_tidy %>%
+  ggplot() +
+  aes(x = Size) + 
+  geom_histogram()+
+  facet_grid(Survey_Date~Impact)
+```
+
+On the whole, how would you describe these distributions? 
+
+
+## The Normal Distribution
+
+Many statistical tests and linear models are based on assumptions that data is normally distributed! Therefore, one thing we'll do a lot of is assess distributions and decide if they can be reasonably approximated by the normal distribution or not.
+
+This applies only to data within a single sample! Don't pool all the data across all the years and sites. 
+
+How do we assess? 
+1. Visually. Is it symmetrical? Are most of the observations in the middle?
+2. With a QQ plot. Do the observations mostly fall close to the 1:1 line? 3. With a Shapiro-Wilk test (we'll learn this later)
+
+1. Visual: 
+```{r is it normal}
+CC_sp19 <- CCdata_tidy %>%
+  filter(Season == "Spring" & Year == 2019 & Impact == "High")
+
+CC_sp19 %>%
+  ggplot() +
+  aes(x = Size)+ 
+  geom_histogram(aes(y = ..density..))  
+```
+2. With a QQ plot
+
+```{r qqplots}
+# here's one function from Base R
+qqnorm(CC_sp19$Size)
+
+# And another from the car package that has 95% confidence intervals
+car::qqPlot(CC_sp19$Size)
+```
+
+3. Next week, we will start learning about statistical tests which can quantify and assign a probability to how closely your data fits a particular type of distribution. 
+
+Are these size data mostly normal or mostly not? 
+
+If they are normal, then we can use a class of tests called parametric tests. If not, we use non-parametric tests. 
+
+
+### Comparison to Corona del Mar
+```{r import CDM data}
+CDMdata <- read_csv(file = "Owls_CDM_2020.csv")
+glimpse(CDMdata)
+```
+
+These are data collected with the same methods from two sites at Corona del Mar in fall 2020. We want to know if the population size/density is different between the high impact and low impact sites, and whether the size distributions look different. 
+
+Make some predictions - what do you expect to see, based on Heidi's presentation? 
+
+** Metadata for CDM dataset** 
+- ID: This column gives a unique number to each row/limpet and is not meaningful, data-wise. 
+- Site: There are two sites in this dataset, that have pretty strong proximity to one of the CCSP sites. 
+-- CDM_near : Little Corona del Mar beach tidepools, is a high impact site near the access. 
+-- CDM_far : Little Corona del Mar beach tidepools, about 250 m south, one cove down is lower impact than CDM_near, but not as low as Treasure Cove.
+- Impact: The sites are different distances from human access points and have correspondingly different visitation rates. High impact sites are expected to be visited more frequently, while Low impact sites are less disturbed.
+- Date: Survey date
+- Size_mm: limpet size in mm along longest length of shell. 
+
+No limpets below 25 mm were measured because they are difficult to find and tell apart from other similar species. 
+
+
+### Combining datasets
+
+We'd like to combine this data frame with the most recent timepoint of the Crystal Cove data so we can compare it. Let's look at those two datasets. 
+
+Site information from the CCdata: 
+-- CCSP, "Low" : Crystal Cove State Park, Treasure Cove is about 800 m south of CDM_far.
+-- CCSP, "High" : Crystal Cove State Park, Historic District is a high-impact site about 2000 meters south of CCSP_TC. 
+
+In order to combine these data, we need to first see what columns we're working with and how they may need to be transformed.  
+```{r check columns}
+colnames(CCdata_tidy)
+colnames(CDMdata)
+```
+
+In order to combine these datasets using the bind_cols() function, they have to have the same column names and data types in each column. It's okay if they're not in the same order, but it's easier to see if they are. 
+
+
+#### Fixing character & factor columns
+We can use the rename() and mutate() functions to fix them! 
+
+1. Create a new column that has a site name that includes CCSP and the Impact level. 
+2. Filter for only the observations from 2020. 
+
+```{r CC sites names and filter}
+CCdata_tidy_2020 <- CCdata_tidy %>% 
+  mutate(Site = paste("CCSP",Impact,sep = "_")) %>%
+  filter(Year == 2020)
+glimpse(CCdata_tidy_2020)
+```
+
+3. Remove the ID column
+4. Rename the size and date columns
+5. Create new columns for Year and for season
+6. Change the column order so it's easy to compare. 
+
+```{r rename and mutate}
+CDMdata_tidy <- CDMdata %>% 
+  dplyr::select(-ID) %>%
+  rename(Size = Size_mm, Survey_Date = Date) %>%
+  mutate(Year = year(Survey_Date), 
+         Season = "Fall") %>%
+  dplyr::select(Size, Impact, Year, Season, Survey_Date, Site)
+```
+
+
+```{r check types}
+# are all our data types the same?
+glimpse(CDMdata_tidy)
+glimpse(CCdata_tidy_2020)
+```
+
+7. Convert the Year column to numeric data type for both sites. 
+
+```{r year numeric}
+CCdata_tidy_2020 <- CCdata_tidy_2020 %>%
+  mutate(Year = as.numeric(Year))
+```
+
+Check again: 
+```{r check types again, echo=TRUE}
+# are all our data types the same?
+str(CDMdata_tidy)
+str(CCdata_tidy_2020)
+```
+
+#### Combining dataframes with bind_rows()
+
+We're ready to bind our dataframes! This function basically staples one dataset to the bottom of the other. 
+
+```{r bind sets}
+AllOwls_2020 <- bind_rows(CDMdata_tidy, CCdata_tidy_2020)
+```
+
+Did it work? 
+```{r check rows}
+nrow(CDMdata_tidy) + nrow(CCdata_tidy_2020)
+nrow(AllOwls_2020)
+
+write_csv(AllOwls_2020, file = "AllOwls_2020.csv")
+
+```
+
+Let's visualize!
+
+#### Does abundance differ between the four sites? 
+```{r Four site abundance plot}
+AllOwls_2020 %>% 
+  ggplot() +
+  aes(x = Site, fill = Impact) + 
+  geom_bar()
+```
+
+#### Does size differ between the four sites? 
+```{r Four site size boxplot}
+AllOwls_2020 %>% 
+  ggplot() +
+  aes(x = Site, y = Size, fill = Impact) + 
+  geom_boxplot()
+```
+
+#### Summarize the size statistics for all four sites, and graph with mean and standard deviation. 
+```{r Four site size summary table}
+AllOwls_summary <- AllOwls_2020 %>% 
+  group_by(Site, Impact) %>% 
+  summarize(MeanSize = mean(Size, na.rm = TRUE), 
+            SDSize = sd(Size, na.rm = TRUE), 
+            MedSize = median(Size), 
+            Count = n()
+            )
+
+
+knitr::kable(AllOwls_summary)
+```
+
+```{r four sites size plot column and errorbars}
+AllOwls_summary %>% 
+  ggplot()+
+  aes(x = Site, y = MeanSize, fill = Impact) +
+  geom_col(position = position_dodge()) + 
+  geom_errorbar(aes(ymin = MeanSize - SDSize, ymax = MeanSize + SDSize), position = position_dodge(0.9), width = 0.2)
+```
+

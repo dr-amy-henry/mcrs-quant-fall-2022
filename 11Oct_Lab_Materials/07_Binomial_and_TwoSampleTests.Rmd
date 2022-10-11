@@ -1,0 +1,237 @@
+---
+title: "Binomial and Two-Sample Test"
+subtitle: "MCRS Quant Fall 2021"
+author: "Amy Henry"
+date: "10-12-2021"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+# Binomial Test
+
+The experiment we discussed the other day about left-handed toads was one in which we conducted a BINOMIAL test. Many variables have  binomial responses, for example: 
+- Dead/Alive
+- Flowering/Not Flowering
+- Presence/Absence
+- Male/Female in many species
+
+Toads: 14 right-handed toads out of 18 toads - is that statistically significant? 
+```{r}
+?binom.test
+
+binom.test(14, 18, p = 0.5)
+
+binom.test(14, 18, p = 0.5, alternative = "two.sided", conf.level = 0.95)
+```
+
+
+You are sampling a seagrass bed that you suspect has uneven sex ratios (very common in seagrass for male plants to be much rarer than females). You find that of 210 plants sampled in your meadow, 150 of them are female. Does your population have a skewed sex ratio? 
+
+```{r}
+binom.test(150, 210, p = 0.5)
+```
+
+
+# T-tests and other tests of difference
+
+First, we'll load in an R data file that contains lots of datasets for us to play with. 
+```{r}
+load(file = "S4E2e.RData")
+```
+
+
+## Parametric tests: The one sample T-test 
+
+Say you are a scientist interested in a sample of dirt you scraped from the nails of a bear in a rocky area, which you think you can use to tell whether the bear traveled from the valley before you tranquilized and took samples. You collect dirt samples from toes and analyze them for pollen content, knowing that there are many trees in the valley and there's usually an average pollen value of about 125 pollen units.  Run a t-test to determine if it is likely that the bear's feet got muddy in the valley.  
+
+```{r one-sample}
+?t.test
+
+pollen <- c(94,135,78,98,137,114,114,101,112,121)
+
+t.test(pollen, mu = 125)
+
+```
+
+Is it likely that he came from the valley? 
+
+Assign your output to an object called "bearpaws", and look at your results using the summary() and str() functions. What do they show you? 
+```{r one-sample-results}
+bearpaws <- t.test()
+summary()
+str() # str is structure
+```
+
+Tell R to print just the p-value from your results object. 
+```{r p-value}
+
+```
+
+```{r p-value-solution}
+bearpaws$p.value
+```
+
+### Two sample T-test
+
+What if you want to compare the means of two samples and determine if they likely came from different populations? 
+
+Ridge and furrow is an archaeological pattern of ridges (Medieval Latin <i>sliones</i>) and troughs created by a system of ploughing used in Europe during the Middle Ages, typical of the open field system.
+
+The earliest examples date to the immediate post-Roman period and the system was used until the 17th century in some areas, as long as the open field system survived. Surviving ridge and furrow topography is found in Great Britain, Ireland and elsewhere in Europe. The surviving ridges are parallel, ranging from 3 to 22 yards (3 to 20 m) apart and up to 24 inches (61 cm) tall – they were much taller when in use. Older examples are often curved.
+
+Ridge and furrow topography was a result of ploughing with non-reversible ploughs on the same strip of land each year. It is visible on land that was ploughed in the Middle Ages, but which has not been ploughed since then. No actively ploughed ridge and furrow survives.
+```{r fig1, echo = FALSE, out.width = "100%", fig.cap = "A ridge and furrow field in Grendon, Northamptonshire, UK"}
+knitr::include_graphics("images/440px-Ridge&amp;Furrow.JPG")
+```
+
+To test whether this ancient remnant of farming practices continues to influence biodiversity today, researchers collected data on the abundance of meadow buttercup plants in 1-m^2 quadrats on the tops of ridges and in the bottom of furrows. The different ways that data can be formatted is shown below. Take a look at the objects "ridge" "furrow" "rf1" and "rf2". 
+
+Which are in tidy format?
+
+```{r two-sample}
+glimpse(ridge)
+glimpse(furrow)
+glimpse(rf1)
+glimpse(rf2)
+```
+
+Use a two-sample t-test to see if the ridges differ in buttercup abundance from the furrows, using ridge and furrow objects. Use the helper to examine how the function works.
+```{r two-sample-names}
+?t.test
+```
+
+The t-test can take inputs in the form of two vectors OR as a formula. 
+```{r two-sample-names-solution}
+?t.test
+t.test(ridge, furrow)
+```
+
+Can you run the same test using the rf1 object?
+```{r two-sample-rf1}
+t.test(count ~ area, data = rf1)
+```
+
+Now try to run the same test using the rf2 object. 
+```{r two-sample-rf2}
+t.test(rf2$Ridge, rf2$Furrow)
+```
+
+You've likely noticed that your output is from a Welch's t-test, which R runs by default. Welch's t-test is a modification of the Student's t-test which reduces the p-value slightly and makes the test a little more conservative. R can also run a Student's t-test, you just have to add the argument "var.equal = TRUE". Run the following two lines and compare the output. 
+
+```{r two-sample-compare}
+t.test(count ~ area, data = rf1, var.equal = FALSE) 
+t.test(count ~ area, data = rf1, var.equal = TRUE) 
+```
+
+## Paired Two-sample T-test
+
+Say you have a pond with a limited number of turtles, and you are interested in whether their weight changed after a substantial drought, which could be important for assessing fitness and reproductive ability. To do so, you've recaptured the same turtles before and after the drought. Since you are measuring the same turtles in each sample, you need to conduct a <b> paired </b> t-test. 
+
+```{r print-limit}
+Before <- c(12.9, 13.5, 12.8, 15.6, 17.2, 19.2, 12.6, 15.3, 14.4, 11.3)
+After <- c(12.7, 13.6, 12.0, 15.2, 16.8, 20.0, 11.9, 14.3, 13.5, 11.1)
+TurtleID <- c(seq(1:10))
+
+# how can we put this into a tidy dataframe? 
+turtles <- tibble(TurtleID, Before, After) %>% 
+  pivot_longer(cols = 2:3, names_to = "When", values_to = "Mass")
+
+turtles
+```
+
+```{r print-limit-hint}
+t.test(Mass ~ When, data = turtles, paired = TRUE)
+```
+
+It's not too often, but occasionally you will be interested in only one tail of the distribution, and your null and alternative hypotheses will be formatted as: 
+H0: Mean turtle weight does not differ before or after the drought. 
+HA: Mean turtle weight will be LOWER after the drought. 
+
+To use one-tailed tests, you must have a really good reason why you don't think the other side is important to assess. Why might turtle weights go up after a drought? If they did, by doing a one-tailed test you've lost the ability to detect it, though you've gained some power to detect weight loss. 
+
+Try running a t-test and comparing outcomes with different alternative hypotheses. 
+
+```{r one-tailed-test-hint}
+t.test(Mass ~ When, data = turtles, paired = TRUE, alternative = "less")
+```
+
+Let's try one more example on your own. 
+
+The data in the "whitefly" object show the counts of whitefly (a greenhouse pest) attracted to different coloured sticky traps. Each trap is bi-coloured so the data are in the form of matched pairs. Which color trap attracts more whiteflies?
+
+```{r whitefly}
+
+```
+
+
+## Non-parametric two-sample tests
+
+Data is not always normally distributed, however, and if your data is egregiously non-parametric, it can be better to use a non-parametric test. The non-parametric equivalent of the one-sample t-test is the Wilcoxon test, also know as a Mann-Whitney U-test. Look at the Help menu for the wilcox.test() function. 
+
+```{r wilcox-help}
+?wilcox.test
+```
+
+Take a look at the datasets flour1, flour2, Woad.fm and Glebe.fm, which all contain the same data. The researchers took a ten samples of flour at two farms, Woad Farm and Glebe Farm, and counted the number of flour beetles in each sample. Which dataset is in "tidy" format, i.e., rows contain observations, columns contain variables? 
+
+```{r view-flour}
+flour1
+flour2
+Woad.fm
+Glebe.fm
+```
+
+Test whether the median number of flour beetles at Woad Farm differs from 3.5. 
+
+```{r wilcox-one-sample-solution}
+wilcox.test(Woad.Fm, mu=3.5)
+```
+
+Now try a Wilcoxon signed-rank test (two-sample) on Woad vs. Glebe Farm, using the dataframe you identified as the one in "tidy formatting". Note: you will likely get an error message that says that it "cannot compute exact p-value with ties". Ties are when multiple observations share the same value. 
+
+By default (if exact is not specified), an exact p-value is computed if the samples contain less than 50 finite values and there are no ties. Otherwise, a normal approximation is used. You can get rid of this error message by adding the argument "exact = FALSE". 
+
+```{r wilcox-two-sample-solution}
+wilcox.test(qty ~ site, data = flour1, paired = FALSE, exact = FALSE)
+```
+
+Finally, repeat your paired test of the whitefly data using a non-parametric test. 
+
+```{r wilcox-paired-solution}
+wilcox <- wilcox.test(whitefly$white, whitefly$yellow, paired = TRUE, exact = FALSE)
+summary(wilcox)
+str(wilcox)
+```
+
+## How to decide whether to use a parametric or non-parametric test
+
+Step 1: Visualize your data using a histogram. Does it look reasonably normal shaped? Bell-curvey? Not wildly skewed? 
+
+Step 2: Plot it using a Q-Q plot. 
+
+Step 3: Use a Shapiro-Wilk test. Shapiro-Wilk is good for relatively small sample sizes, but often is too sensitive and calls foul on distributions that are plenty close to normal. 
+
+Let's do each of these steps for our fat pigeon data. 
+
+1. Plot a histogram using the hist() function
+
+```{r pigeon-hist-solution}
+hist(birds)
+```
+
+2. Plot a QQ plot to compare against the normal distribution. The x-axis is the theoretical fit, if the data were to fit a normal distribution based on the mean and standard deviation of the sample. The y-axis is the data. If the points are closer to the 1:1 line, then the data is closer to normally distributed. (there's nothing to modify here)
+```{r birds-qq}
+qqnorm(birds, pch = 1, frame = FALSE)
+qqline(birds, col = "steelblue", lwd = 2)
+```
+
+3. Conduct a Shapiro-Wilk test to calculate normality. 
+```{r bird-shapiro}
+?shapiro.test
+```

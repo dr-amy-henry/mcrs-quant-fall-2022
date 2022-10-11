@@ -1,0 +1,249 @@
+---
+title: "Data Types Demo"
+subtitle: "Quant Fall 2021"
+author: "Amy Henry"
+date created: "10-7-2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include = FALSE}
+library(tidyverse)
+library(lubridate)
+```
+
+# What are the important data types in R? How does R encode and store format information about values?  
+
+** int stands for integers.
+integers are whole numbers, and function pretty much the same as doubles.
+
+** dbl stands for doubles, or real numbers.
+doubles are normal numbers with decimals, etc. The only reason there's a difference is because integers take less computer space to store; therefore some folks use them to make their code more efficient. 
+
+** chr stands for character vectors, or strings.
+Characters are "words". They're stored in quotation marks and are essentially treated as just text. 
+
+** date stands for dates.
+** dttm stands for date-times (a date + a time).
+Pretty self-explanatory. Needs to be in date or date-time format for R to be able to do any kind of calculation of time. 
+
+** lgl stands for logical, vectors that contain only TRUE or FALSE.
+Logical data is yes or no, 0 or 1, TRUE or FALSE. It has only two states. We've used logical operators before to test statements. 
+
+** fct stands for factors, which R uses to represent categorical variables with fixed possible values.
+Factors include things like block, treatment, etc. and is especially useful if you plan to map or analyze based on the categorical variable. 
+
+
+## Functions to test for data types and object types
+Not sure what data type you're working with? Your data not behaving how you think it should when you try to graph it or compute something on it? 
+Try these functions to display different characteristics of your data or objects. 
+
+typeof()
+class()
+storage.mode()
+length()
+nrow()
+ncol()
+attributes()
+
+# What do the data types look like in practice? 
+
+This dataset contains measurements of field mice trapped in two locations over three days. 
+```{r}
+MouseData <- read_csv(file = "MouseDataTypes.csv")
+glimpse(MouseData)
+```
+
+
+
+What data types did R automatically detect? Which ones should we fix? 
+
+```{r}
+MouseData %>% 
+  mutate(
+    Habitat = as.factor(Habitat), 
+    MouseNumber = as.integer(MouseNumber),
+    TailLength = as.numeric(TailLength),
+    Weight = as.numeric(Weight),
+)
+```
+
+What does it look like when a datatype is misbehaving? 
+```{r}
+Temp <- MouseData %>% mutate(Weight = as.character(Weight)) 
+mean(Temp$Weight) # note the error message! 
+
+mean(Temp$Female) # what did this return to us? 
+```
+
+We use functions from the package lubridate to tell R what order our date and time information comes in, and what the units are. 
+```{r}
+MouseData
+Temp2 <- MouseData %>% select(Date, Time, DateTime) %>%
+  mutate(
+    Date = mdy(Date), 
+    # Date = dmy(Date), # what happens if you run this line instead? 
+    Time = hms(Time),
+    DateTime = mdy_hm(DateTime)
+)
+Temp2
+Temp2$DateTime[1] - Temp2$DateTime[2]
+```
+
+
+## All the reformatted variables together: 
+```{r}
+MouseData_typed <- MouseData %>% 
+  mutate(
+    Habitat = as.factor(Habitat), 
+    Date = mdy(Date), 
+    Time = hms(Time),
+    MouseNumber = as.integer(MouseNumber),
+    TailLength = as.numeric(TailLength),
+    Weight = as.numeric(Weight),
+    DateTime = mdy_hm(DateTime)
+)
+
+glimpse(MouseData_typed)
+```
+
+
+# What are the major types of objects in R? 
+
+The typeof() function also helps to diagnose problems if you're struggling with a computation not doing what it should. When you apply it to more than a single vector/variable or a particular value, but to a whole data object, it can tell you the type of the object. 
+
+#### Vector
+
+Vectors are one-dimensional data storage in which all the data have the same data type. 
+
+Notice how even though we entered some numbers, R decided all to store all of them as characters.
+```{r}
+vector_demo <- c(1, 3, "red", "applesauce")
+vector_demo
+
+typeof(vector_demo)
+```
+
+#### Matrix
+
+```{r}
+matrix_demo <- matrix(c(1:12), nrow = 3)
+matrix_demo
+
+typeof(matrix_demo)
+```
+
+#### Array
+
+An array is like a matrix with more than two dimensions. 
+
+```{r}
+# Create two vectors of different lengths.
+vector1 <- c(5,9,3)
+vector2 <- c(10,11,12,13,14,15)
+
+# Take these vectors as input to the array.
+array_demo <- array(c(vector1,vector2),dim = c(3,3,2))
+print(array_demo) 
+
+class(array_demo)
+```
+
+
+If you'll indulge me in hurting your brain for a minute... 
+```{r}
+library(fivethirtyeight)
+
+temp_Candy <- count(candy_rankings, chocolate, caramel, fruity)
+temp_Candy
+temp_Candy <- table(candy_rankings$chocolate, 
+      candy_rankings$caramel, 
+      candy_rankings$fruity)
+temp_Candy
+```
+
+#### Data Frame / Tibble
+
+Data Frames and Tibbles do exactly the same thing; the difference is only in how R handles and displays them. Tibbles are the tidyverse version, while data frames are an older format. 
+
+```{r}
+# Create two vectors of different lengths.
+Var1 <- c("Adam", "Amanda", "Elliot", "Francine", "Jessie", "Caroline")
+Var2 <- c(10,11,12,13,14,15)
+
+tibble_demo <- data_frame(Var1,Var2)
+tibble_demo
+```
+
+#### List
+
+A list is a collection of data objects; each item in the list is its own object, and they don't all have to be the same length or format at all.  
+```{r}
+list_demo <- list(vector_demo, matrix_demo, array_demo, tibble_demo)
+
+# selecting particular objects in the list
+list_demo[[1]]
+list_demo[[2]]
+list_demo[[3]]
+list_demo[[4]]
+
+typeof(list_demo)
+```
+
+Technically, a tibble is a kind of list in which every item is a vector of the same length. 
+```{r}
+typeof(tibble_demo)
+```
+
+
+Often, the output of statistical tests is stored as a list.
+```{r}
+test_output_demo <- t.test(Var2,Var2, data = tibble_demo)
+typeof(test_output_demo)
+ls(test_output_demo) # if objects in a list are named, then ls() will show the names. 
+
+test_output_demo$estimate
+```
+
+What does our final dataset look like when we assess it with different assessment metrics? What do they each do? 
+```{r}
+typeof(MouseData_typed)
+class(MouseData_typed)
+storage.mode(MouseData_typed)
+length(MouseData_typed)
+nrow(MouseData_typed)
+ncol(MouseData_typed)
+attributes(MouseData_typed)
+```
+
+What outputs from typeof() mean: 
+
+“NULL”	NULL
+“symbol”	a variable name
+“pairlist”	a pairlist object (mainly internal)
+“closure”	a function
+“environment”	an environment
+“promise”	an object used to implement lazy evaluation
+“language”	an R language construct
+“special”	an internal function that does not evaluate its arguments
+“builtin”	an internal function that evaluates its arguments
+“char”	a ‘scalar’ string object (internal only) ***
+“logical”	a vector containing logical values
+“integer”	a vector containing integer values
+“double”	a vector containing real values
+“complex”	a vector containing complex values
+“character”	a vector containing character values
+“…”	the special variable length argument ***
+“any”	a special type that matches all types: there are no objects of this type
+“expression”	an expression object
+“list”	a list
+“bytecode”	byte code (internal only) ***
+“externalptr”	an external pointer object
+“weakref”	a weak reference object
+“raw”	a vector containing bytes
+“S4”	an S4 object which is not a simple object
+
+

@@ -1,0 +1,41 @@
+---
+title: "Lottia gigantea at Corona del Mar State Beach"
+author: "Amy Henry"
+date: "2022-10-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load packages, include=FALSE}
+
+
+```
+
+```{r import data, include = FALSE}
+
+
+```
+
+### Project Summary: 
+Write your project summary here. 
+
+
+### Part I: Population Summary Statistics and Demographics
+```{r}
+
+```
+
+
+### Part II: Is there a difference in mean size between the near and far sites at CDM?
+```{r}
+
+```
+
+### Part III: Is there a relationship between body length and territory size at Corona del Mar State Beach? How does it compare to the relationship between body mass and territory size found by Fenberg et al. 2013?
+```{r}
+
+```
+

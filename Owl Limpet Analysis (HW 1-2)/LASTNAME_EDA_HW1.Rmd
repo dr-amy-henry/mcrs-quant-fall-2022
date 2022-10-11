@@ -1,0 +1,75 @@
+
+# Steps to analyzing the CDM data: 
+
+1. load your necessary packages
+```{r}
+library(tidyverse)
+```
+
+2. Identify your datasets and import them
+```{r}
+
+```
+
+
+### Part I: Data cleaning & Reformatting
+3. Examine the structure of each dataset. 
+```{r}
+
+```
+
+4. Clean up datasets that need to be combined
+a. Remove unnecessary columns from CDM_SizeData_2022
+```{r}
+
+```
+b. Use the uncount() function to convert your data from one row per size class to one row per limpet. 
+```{r}
+
+```
+c. Use the rename() function to change the names of the columns in Owls_CDM_2020 to match the names of the corresponding columns in CDM_SizeData_2022
+```{r}
+
+```
+d. Use the mutate() function with the case_when() function to change the location metadata in the 2020 data to be coded in the same way as your 2022 data. 
+```{r}
+
+```
+e. Use the glimpse() function to check that columns with matching names between 2020-2022 have the same data type/format (e.g., numeric, character) and if any don't match, use mutate() function to change it. 
+```{r}
+
+```
+f. Use bind_rows() to combine the 2020 data and the 2022 data into one data frame. Check that it worked using nrow() to see the number of rows (should be the sum of the two) and names() to see the columns (should have no new columns)
+```{r}
+
+```
+
+5. Calculate any data transformations or calculated variables
+a. In your territory dataset, use mutate() to create a new column for body mass, using the equation from Fenberg et al. 2013 reproduced below:
+
+mass = 0.00009*Length^(3.0471)
+
+```{r}
+
+```
+
+
+## Part 2: Exploratory Data Analysis
+
+1. For each dataset, visualize data distributions. 
+
+2. Assess distributions for normality for quantitative response variables. 
+a. Does this data make sense to be normal?  
+b. Visually with a histogram or other figure
+c. Using a QQ plot
+
+3. Visualize comparisons of data using different treatments/years/locations
+
+4. Plot interesting variables against each other. 
+
+
+## Part 3: Reflection
+
+What patterns do you see in your data? What predictions do you make? Which plots would be good to develop into more polished versions for your HW2? 
+
+
